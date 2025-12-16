@@ -1,0 +1,45 @@
+{
+    "conversion_info": {
+        "timestamp": "2025-12-08 18:39:53",
+        "success": true,
+        "conversion_time_seconds": 9.079270124435425,
+        "conversion_time_minutes": 0.1513211687405904
+    },
+    "model_paths": {
+        "h5_model": "C:\\MSL-TRUSBIM\\msl-transformer\\bigger.h5",
+        "onnx_model": "C:\\MSL-TRUSBIM\\msl-transformer\\bigger.onnx",
+        "h5_exists": true,
+        "onnx_exists": true
+    },
+    "model_architecture": {
+        "type": "Multi-Stream Transformer",
+        "num_streams": 9,
+        "num_inputs": 7,
+        "num_outputs": 1,
+        "total_parameters": 2653390,
+        "sequence_length": 30
+    },
+    "subvectors": {
+        "location_l_hand": 63,
+        "location_r_hand": 63,
+        "location_pose": 48,
+        "handshape_l": 210,
+        "handshape_r": 210,
+        "palm_orientation": 200,
+        "movement": 252,
+        "hand_body_spatial": 40,
+        "hand_interaction": 35
+    },
+    "model_config": {
+        "total_features": 1121,
+        "opset_version": 13,
+        "tensorflow_version": "2.10.0"
+    },
+    "file_info": {
+        "onnx_size_mb": 15.78942584991455,
+        "h5_size_mb": 31.316173553466797
+    },
+    "validation": {
+        "onnx_validation_passed": true
+    }
+}
