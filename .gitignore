@@ -1,0 +1,153 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Machine Learning / Data Science
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.onnx
+*.pb
+*.tflite
+*.weights
+*.cfg
+
+# Logs
+*.log
+logs/
+
+# Streamlit
+.streamlit/
+
+# MediaPipe temporary files
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+
+# Model files (keep in repo but track changes carefully)
+# model/*.h5
+# model/*.onnx
+# model/*.pb
+
+# Data files (too large for GitHub)
+data/
+*.npy
+*.npz
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+
+# Report files
+report/*.png
+report/*.jpg
+report/*.jpeg
+report/*.pdf
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# TensorFlow
+checkpoint*
+events.out.tfevents.*
+graph.pbtxt
+
+# ONNX Runtime
+ort_*
+
+# OpenCV
+*.xml
+*.yml
+*.yaml
+
+# Audio files (if any)
+*.wav
+*.mp3
+*.flac
+
+# Backup files
+*.bak
+*.backup
+*~
