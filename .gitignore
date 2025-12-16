@@ -96,7 +96,7 @@ logs/
 *.webm
 
 # Model files (keep in repo but track changes carefully)
-# model/*.h5
+model/*.h5
 # model/*.onnx
 # model/*.pb
 
