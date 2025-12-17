@@ -32,11 +32,11 @@ Enable your webcam below and start signing!
 st.sidebar.header("Controls")
 show_face_landmarks = st.sidebar.checkbox("Show Face Landmarks", value=True)
 show_pose_landmarks = st.sidebar.checkbox("Show Pose/Body Landmarks", value=True)
-confidence_threshold = st.sidebar.slider("Confidence Threshold", 0.4, 1.0, 0.6, 0.05)
+confidence_threshold = st.sidebar.slider("Confidence Threshold", 0.4, 1.0, 0.9, 0.05)
 # NEW: Hands loss timeout configuration
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔄 Hands Loss Settings")
-hands_lost_timeout = st.sidebar.slider("Hands Loss Timeout (frames)", 10, 120, 30, 5)
+hands_lost_timeout = st.sidebar.slider("Hands Loss Timeout (frames)", 10, 120, 15, 5)
 st.sidebar.markdown(f"*Clears predictions after {hands_lost_timeout/30:.1f}s of no hands*")
 
 # --- Helper Functions for Model Loading ---
