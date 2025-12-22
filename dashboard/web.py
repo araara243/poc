@@ -581,7 +581,28 @@ if model:
 
     with col1:
         st.write("### Webcam Feed")
-        rtc_config = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
+
+        from twilio.rest import Client
+
+        # 1. Try to get secrets from Streamlit
+        try:
+            account_sid = st.secrets["twilio"]["account_sid"]
+            auth_token = st.secrets["twilio"]["auth_token"]
+            
+            client = Client(account_sid, auth_token)
+            
+            # Create a token (valid for 24h)
+            token = client.tokens.create()
+
+            # Use the TURN server from Twilio
+            rtc_config = RTCConfiguration({"iceServers": token.ice_servers})
+
+        except Exception as e:
+            # Fallback for local dev or if secrets are missing
+            st.warning("⚠️ Using Google STUN (Fallback). Setup Twilio secrets for better stability.")
+            rtc_config = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
+        # --- NEW CODE END ---
+
         webrtc_streamer(key="sign-language", rtc_configuration=rtc_config, media_stream_constraints={"video": True, "audio": False}, video_processor_factory=SignLanguageProcessor, async_processing=True)
 
     with col2:
