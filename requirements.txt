@@ -1,7 +1,7 @@
 ﻿mediapipe==0.10.5
 onnxruntime==1.19.2
 opencv-python-headless==4.11.0.86
-streamlit-webrtc==0.48.0
-av==11.0.0
+streamlit-webrtc==0.63.11
+av==14.4.0
 numpy==1.24.3
-streamlit_autorefresh==0.1.5
+streamlit_autorefresh==1.0.1
