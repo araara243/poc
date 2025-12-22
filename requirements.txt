@@ -1,3 +1,5 @@
 ﻿mediapipe==0.10.5
 onnxruntime==1.19.2
 opencv-python-headless==4.11.0.86
+streamlit-webrtc
+av

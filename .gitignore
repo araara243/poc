@@ -100,8 +100,8 @@ model/*.h5
 # model/*.pb
 
 # Data files (too large for GitHub)
-data/
-*.npy
+data1/
+#*.npy
 *.npz
 *.h5
 *.hdf5
