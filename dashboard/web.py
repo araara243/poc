@@ -582,29 +582,41 @@ if model:
     with col1:
         st.write("### Webcam Feed")
 
-        from twilio.rest import Client
+        # 🚀 Using Free TURN servers from OpenRelay (Metered.ca)
+        # This bypasses firewalls without needing Twilio or API keys.
+        rtc_config = RTCConfiguration({
+            "iceServers": [
+                # STUN server
+                {"urls": ["stun:openrelay.metered.ca:80"]},
+                
+                # TURN servers (UDP)
+                {
+                    "urls": ["turn:openrelay.metered.ca:80"],
+                    "username": "openrelayproject",
+                    "credential": "openrelayproject"
+                },
+                {
+                    "urls": ["turn:openrelay.metered.ca:443"],
+                    "username": "openrelayproject",
+                    "credential": "openrelayproject"
+                },
+                # TURN server (TCP) - Good fallback if UDP is blocked
+                {
+                    "urls": ["turn:openrelay.metered.ca:443?transport=tcp"],
+                    "username": "openrelayproject",
+                    "credential": "openrelayproject"
+                }
+            ]
+        })
 
-        # 1. Try to get secrets from Streamlit
-        try:
-            account_sid = st.secrets["twilio"]["account_sid"]
-            auth_token = st.secrets["twilio"]["auth_token"]
-            
-            client = Client(account_sid, auth_token)
-            
-            # Create a token (valid for 24h)
-            token = client.tokens.create()
-
-            # Use the TURN server from Twilio
-            rtc_config = RTCConfiguration({"iceServers": token.ice_servers})
-
-        except Exception as e:
-            # Fallback for local dev or if secrets are missing
-            st.warning("⚠️ Using Google STUN (Fallback). Setup Twilio secrets for better stability.")
-            rtc_config = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
-        # --- NEW CODE END ---
-
-        webrtc_streamer(key="sign-language", rtc_configuration=rtc_config, media_stream_constraints={"video": True, "audio": False}, video_processor_factory=SignLanguageProcessor, async_processing=True)
-
+        # The WebRTC Component
+        webrtc_streamer(
+            key="sign-language", 
+            rtc_configuration=rtc_config, 
+            media_stream_constraints={"video": True, "audio": False}, 
+            video_processor_factory=SignLanguageProcessor, 
+            async_processing=True
+        )
     with col2:
         st.write("### Recognized Signs")
         
