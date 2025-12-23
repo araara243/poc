@@ -524,42 +524,42 @@ if model:
     with col1:
         st.write("### Webcam Feed")
 
-        rtc_config= RTCConfiguration({
-            "iceServers": [
-                {"urls": ["stun:stun.l.google.com:19302"]},
-                {
-                    "urls": ["turn:openrelay.metered.ca:80"],
-                    "username": "openrelayproject",
-                    "credential": "openrelayproject"
-                }
-            ]
-        })
-        # 🚀 Using Free TURN servers from OpenRelay (Metered.ca)
-        # This bypasses firewalls without needing Twilio or API keys.
-        #rtc_config = RTCConfiguration({
+        #rtc_config= RTCConfiguration({
         #    "iceServers": [
-        #        # STUN server
-        #        {"urls": ["stun:openrelay.metered.ca:80"]},
-        #        
-                # TURN servers (UDP)
+        #        {"urls": ["stun:stun.l.google.com:19302"]},
         #        {
         #            "urls": ["turn:openrelay.metered.ca:80"],
-        #            "username": "openrelayproject",
-        #            "credential": "openrelayproject"
-        #        },
-        #        {
-        #            "urls": ["turn:openrelay.metered.ca:443"],
-        #            "username": "openrelayproject",
-        #            "credential": "openrelayproject"
-        #        },
-        #        # TURN server (TCP) - Good fallback if UDP is blocked
-        #        {
-        #            "urls": ["turn:openrelay.metered.ca:443?transport=tcp"],
         #            "username": "openrelayproject",
         #            "credential": "openrelayproject"
         #        }
         #    ]
         #})
+        # 🚀 Using Free TURN servers from OpenRelay (Metered.ca)
+        # This bypasses firewalls without needing Twilio or API keys.
+        rtc_config = RTCConfiguration({
+            "iceServers": [
+                # STUN server
+                {"urls": ["stun:openrelay.metered.ca:80"]},
+                
+                # TURN servers (UDP)
+                {
+                    "urls": ["turn:openrelay.metered.ca:80"],
+                    "username": "openrelayproject",
+                    "credential": "openrelayproject"
+                },
+                {
+                    "urls": ["turn:openrelay.metered.ca:443"],
+                    "username": "openrelayproject",
+                    "credential": "openrelayproject"
+                },
+                # TURN server (TCP) - Good fallback if UDP is blocked
+                {
+                    "urls": ["turn:openrelay.metered.ca:443?transport=tcp"],
+                    "username": "openrelayproject",
+                    "credential": "openrelayproject"
+                }
+            ]
+        })
 
         # The WebRTC Component
         webrtc_streamer(
