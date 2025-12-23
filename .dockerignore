@@ -1,0 +1,63 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.venv
+.env
+
+# Virtual environments
+onnx_env/
+
+# Logs
+logs/
+Logs_*/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large data files that should be copied separately
+# (uncomment if you want to handle these separately)
+# data/
+# videos/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Documentation
+README.md
+DEPLOYMENT.md
+FIXES_IMPLEMENTED.md
+
+# Test files
+test_*.py
+*_test.py
+
+# Build artifacts
+build/
+dist/
+
+# Node modules (if any)
+node_modules/
+
+# Cache
+.cache/
+.pytest_cache/

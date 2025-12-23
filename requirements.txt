@@ -5,4 +5,5 @@ streamlit-webrtc==0.63.11
 av==14.4.0
 numpy==1.24.3
 streamlit_autorefresh==1.0.1
-twilio
+streamlit>=1.28.0
+onnx==1.16.0
