@@ -7,125 +7,75 @@ import mediapipe as mp
 import onnxruntime as ort
 from collections import deque
 import time
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration, WebRtcMode
 import av
-import threading
 
-# --- GLOBAL SHARED STATE (accessible from video thread) ---
+# --- Simplified Global State ---
 class GlobalPredictionState:
     def __init__(self):
-        self.lock = threading.Lock()
         self.prediction = "Waiting..."
         self.confidence = 0.0
         self.sentence = []
-        self.frame_count = 0
-        self.valid_predictions = 0
-        self.last_update_time = time.time()
         self.sequence = []
         self.previous_frame_data = None
-        self.hands_lost_counter = 0
-        self.final_sequences = []
         self.prediction_sequence = []
+        self.final_sequences = []
+        self.hands_lost_counter = 0
+        self.hands_lost_threshold = 15  # 15 frames timeout
     
     def update(self, prediction, confidence, sentence):
-        with self.lock:
-            self.prediction = prediction
-            self.confidence = float(confidence)
-            self.sentence = sentence.copy()
-            self.frame_count += 1
-            self.last_update_time = time.time()
-            if confidence > 0.1:
-                self.valid_predictions += 1
+        self.prediction = prediction
+        self.confidence = float(confidence)
+        self.sentence = sentence.copy()
     
     def get_state(self):
-        with self.lock:
-            return {
-                'prediction': self.prediction,
-                'confidence': self.confidence,
-                'sentence': self.sentence.copy(),
-                'frame_count': self.frame_count,
-                'valid_predictions': self.valid_predictions,
-                'last_update_time': self.last_update_time,
-                'sequence': list(self.sequence),
-                'hands_lost_counter': self.hands_lost_counter,
-                'final_sequences': list(self.final_sequences),
-                'prediction_sequence': list(self.prediction_sequence)
-            }
+        return {
+            'prediction': self.prediction,
+            'confidence': self.confidence,
+            'sentence': self.sentence.copy(),
+            'sequence': list(self.sequence),
+            'final_sequences': list(self.final_sequences),
+            'prediction_sequence': list(self.prediction_sequence)
+        }
     
     def append_to_sequence(self, features, max_length=30):
-        with self.lock:
-            self.sequence.append(features)
-            self.sequence = self.sequence[-max_length:]
+        self.sequence.append(features)
+        self.sequence = self.sequence[-max_length:]
     
     def get_sequence(self):
-        with self.lock:
-            return list(self.sequence)
+        return list(self.sequence)
     
     def set_previous_frame_data(self, data):
-        with self.lock:
-            self.previous_frame_data = data
+        self.previous_frame_data = data
     
     def get_previous_frame_data(self):
-        with self.lock:
-            return self.previous_frame_data
-    
-    def increment_frame_count(self):
-        with self.lock:
-            self.frame_count += 1
-            return self.frame_count
-    
-    def get_frame_count(self):
-        with self.lock:
-            return self.frame_count
-    
-    def set_hands_lost_counter(self, value):
-        with self.lock:
-            self.hands_lost_counter = value
-    
-    def increment_hands_lost_counter(self):
-        with self.lock:
-            self.hands_lost_counter += 1
-            return self.hands_lost_counter
-    
-    def get_hands_lost_counter(self):
-        with self.lock:
-            return self.hands_lost_counter
+        return self.previous_frame_data
     
     def add_final_sequence(self, sequence_result):
-        with self.lock:
-            self.final_sequences.append(sequence_result)
-            if len(self.final_sequences) > 4:
-                self.final_sequences = self.final_sequences[-4:]
+        self.final_sequences.append(sequence_result)
+        if len(self.final_sequences) > 4:
+            self.final_sequences = self.final_sequences[-4:]
     
     def get_final_sequences(self):
-        with self.lock:
-            return list(self.final_sequences)
+        return list(self.final_sequences)
     
     def add_to_prediction_sequence(self, prediction_data):
-        with self.lock:
-            self.prediction_sequence.append(prediction_data)
+        self.prediction_sequence.append(prediction_data)
     
     def get_prediction_sequence(self):
-        with self.lock:
-            return list(self.prediction_sequence)
+        return list(self.prediction_sequence)
     
     def clear_prediction_sequence(self):
-        with self.lock:
-            self.prediction_sequence = []
+        self.prediction_sequence = []
     
     def clear_all(self):
-        with self.lock:
-            self.prediction = "Waiting..."
-            self.confidence = 0.0
-            self.sentence = []
-            self.frame_count = 0
-            self.valid_predictions = 0
-            self.last_update_time = time.time()
-            self.sequence = []
-            self.previous_frame_data = None
-            self.hands_lost_counter = 0
-            self.final_sequences = []
-            self.prediction_sequence = []
+        self.prediction = "Waiting..."
+        self.confidence = 0.0
+        self.sentence = []
+        self.sequence = []
+        self.previous_frame_data = None
+        self.prediction_sequence = []
+        self.final_sequences = []
 
 # --- Subvector Configuration ---
 SUBVECTOR_CONFIG = {
@@ -152,11 +102,8 @@ Enable your webcam below and start signing!
 st.sidebar.header("Controls")
 show_face_landmarks = st.sidebar.checkbox("Show Face Landmarks", value=True)
 show_pose_landmarks = st.sidebar.checkbox("Show Pose/Body Landmarks", value=True)
-confidence_threshold = st.sidebar.slider("Confidence Threshold", 0.4, 1.0, 0.9, 0.05)
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🔄 Hands Loss Settings")
-hands_lost_timeout = st.sidebar.slider("Hands Loss Timeout (frames)", 10, 120, 15, 5)
-st.sidebar.markdown(f"*Clears predictions after {hands_lost_timeout/30:.1f}s of no hands*")
+#confidence_threshold = st.sidebar.slider("Confidence Threshold", 0.4, 1.0, 0.9, 0.05)
+confidence_threshold = 0.9  # Fixed confidence threshold at 90%
 
 # --- Helper Functions for Model Loading ---
 def get_available_providers():
@@ -196,8 +143,8 @@ def load_onnx_model(model_path):
         outputs = session.get_outputs()
         input_names = [inp.name for inp in inputs]
         output_name = outputs[0].name
-        st.success(f"✅ ONNX Model loaded successfully from {model_path}")
-        st.info(f"📊 Model: {len(inputs)} inputs, {len(outputs)} outputs")
+        # st.success(f"✅ ONNX Model loaded successfully from {model_path}")
+        # st.info(f"📊 Model: {len(inputs)} inputs, {len(outputs)} outputs")
         return session, input_names, output_name
     except Exception as e:
         st.error(f"❌ Error loading ONNX model: {e}")
@@ -429,12 +376,12 @@ if model:
         right_hand_detected = results.right_hand_landmarks is not None and len(results.right_hand_landmarks.landmark) > 0
         return left_hand_detected or right_hand_detected
 
-    def cleanup_incomplete_sequences_shared():
+    def cleanup_incomplete_sequences():
         prediction_seq = global_state.get_prediction_sequence()
         if len(prediction_seq) > 0:
             cleared_count = len(prediction_seq)
             global_state.clear_prediction_sequence()
-            print(f"[CLEANUP] Cleared {cleared_count} incomplete predictions due to hands loss timeout")
+            print(f"[CLEANUP] Cleared {cleared_count} incomplete predictions")
             return True
         return False
 
@@ -488,7 +435,7 @@ if model:
             st.error(f"[ERROR] ONNX Prediction error: {e}")
             return "Error", 0.0
 
-    def add_to_prediction_sequence_shared(prediction, confidence):
+    def add_to_prediction_sequence(prediction, confidence):
         if confidence >= confidence_threshold:
             global_state.add_to_prediction_sequence({'prediction': prediction, 'confidence': confidence})
             print(f"[HIGH CONF] {prediction} ({confidence:.2%}) added to sequence")
@@ -496,10 +443,10 @@ if model:
             print(f"[FILTERED] Low confidence prediction: {prediction} ({confidence:.2%})")
         prediction_seq = global_state.get_prediction_sequence()
         if len(prediction_seq) >= 10:
-            process_sequence_vote_shared()
+            process_sequence_vote()
             global_state.clear_prediction_sequence()
 
-    def process_sequence_vote_shared():
+    def process_sequence_vote():
         prediction_seq = global_state.get_prediction_sequence()
         if len(prediction_seq) < 10:
             return
@@ -523,13 +470,12 @@ if model:
         return sequence_result
 
     def deduplicate_sequences():
-        if 'final_sequences' not in st.session_state:
-            st.session_state.final_sequences = []
-        if len(st.session_state.final_sequences) == 0:
+        final_sequences = global_state.get_final_sequences()
+        if len(final_sequences) == 0:
             return []
         unique_sequences = []
         prev_prediction = None
-        for seq in st.session_state.final_sequences:
+        for seq in final_sequences:
             if seq['final_prediction'] != prev_prediction:
                 unique_sequences.append(seq)
                 prev_prediction = seq['final_prediction']
@@ -544,36 +490,31 @@ if model:
             img = frame.to_ndarray(format="rgb24")
             image, results = mediapipe_detection(img, self.holistic)
             image = draw_styled_landmarks(image, results)
-            frame_count = global_state.increment_frame_count()
-            current_status = ""
-            current_confidence = 0.0
+            
             hands_detected = are_hands_detected(results)
+            
+            # Hands loss timeout logic
             if hands_detected:
-                global_state.set_hands_lost_counter(0)
+                global_state.hands_lost_counter = 0
             else:
-                hands_lost_count = global_state.increment_hands_lost_counter()
-                if hands_lost_count >= hands_lost_timeout:
-                    cleanup_performed = cleanup_incomplete_sequences_shared()
-                    if cleanup_performed:
-                        current_status = f"🧹 Cleared incomplete predictions (no hands for {hands_lost_timeout/30:.1f}s)"
+                global_state.hands_lost_counter += 1
+                if global_state.hands_lost_counter >= global_state.hands_lost_threshold:
+                    cleanup_incomplete_sequences()
+            
             previous_data = global_state.get_previous_frame_data()
             combined_features, raw_data = extract_all_subvectors(results, previous_data)
             global_state.append_to_sequence(combined_features, max_length=self.sequence_length)
             global_state.set_previous_frame_data(raw_data)
+            
             sequence = global_state.get_sequence()
-            if len(sequence) == self.sequence_length and frame_count % 1 == 0 and hands_detected:
+            if len(sequence) == self.sequence_length and hands_detected:
                 sequence_array = np.array(sequence)
                 if sequence_array.shape != (self.sequence_length, TOTAL_FEATURES):
                     sequence_array = sequence_array.reshape(self.sequence_length, -1)
                 current_prediction, current_confidence = predict_onnx(sequence_array)
-                add_to_prediction_sequence_shared(current_prediction, current_confidence)
-                # Update global state with current prediction
+                add_to_prediction_sequence(current_prediction, current_confidence)
                 global_state.update(current_prediction, current_confidence, global_state.get_state()['sentence'])
-            else:
-                if len(sequence) < self.sequence_length and not current_status:
-                    current_status = f"Buffering {len(sequence)}/{self.sequence_length}"
-                elif not hands_detected and not current_status:
-                    current_status = "No hands detected"
+            
             return av.VideoFrame.from_ndarray(image, format="rgb24")
 
     # --- Streamlit UI ---
@@ -582,36 +523,40 @@ if model:
     with col1:
         st.write("### Webcam Feed")
 
+        rtc_config= RTCConfiguration({
+            "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
+        })
         # 🚀 Using Free TURN servers from OpenRelay (Metered.ca)
         # This bypasses firewalls without needing Twilio or API keys.
-        rtc_config = RTCConfiguration({
-            "iceServers": [
-                # STUN server
-                {"urls": ["stun:openrelay.metered.ca:80"]},
-                
+        #rtc_config = RTCConfiguration({
+        #    "iceServers": [
+        #        # STUN server
+        #        {"urls": ["stun:openrelay.metered.ca:80"]},
+        #        
                 # TURN servers (UDP)
-                {
-                    "urls": ["turn:openrelay.metered.ca:80"],
-                    "username": "openrelayproject",
-                    "credential": "openrelayproject"
-                },
-                {
-                    "urls": ["turn:openrelay.metered.ca:443"],
-                    "username": "openrelayproject",
-                    "credential": "openrelayproject"
-                },
-                # TURN server (TCP) - Good fallback if UDP is blocked
-                {
-                    "urls": ["turn:openrelay.metered.ca:443?transport=tcp"],
-                    "username": "openrelayproject",
-                    "credential": "openrelayproject"
-                }
-            ]
-        })
+        #        {
+        #            "urls": ["turn:openrelay.metered.ca:80"],
+        #            "username": "openrelayproject",
+        #            "credential": "openrelayproject"
+        #        },
+        #        {
+        #            "urls": ["turn:openrelay.metered.ca:443"],
+        #            "username": "openrelayproject",
+        #            "credential": "openrelayproject"
+        #        },
+        #        # TURN server (TCP) - Good fallback if UDP is blocked
+        #        {
+        #            "urls": ["turn:openrelay.metered.ca:443?transport=tcp"],
+        #            "username": "openrelayproject",
+        #            "credential": "openrelayproject"
+        #        }
+        #    ]
+        #})
 
         # The WebRTC Component
         webrtc_streamer(
             key="sign-language", 
+            mode=WebRtcMode.SENDRECV,
             rtc_configuration=rtc_config, 
             media_stream_constraints={"video": True, "audio": False}, 
             video_processor_factory=SignLanguageProcessor, 
@@ -620,109 +565,19 @@ if model:
     with col2:
         st.write("### Recognized Signs")
         
-        # Initialize session state
-        if 'final_sequences' not in st.session_state:
-            st.session_state.final_sequences = []
-        if 'last_ui_update' not in st.session_state:
-            st.session_state.last_ui_update = 0
-        if 'last_auto_refresh' not in st.session_state:
-            st.session_state.last_auto_refresh = time.time()
-        if 'auto_refresh' not in st.session_state:
-            st.session_state.auto_refresh = True
-        
-        # Enable auto-refresh (updates every 500ms)
-        enable_refresh = st.checkbox("Enable Real-Time Updates", value=True, key="enable_refresh")
-        
-        if enable_refresh:
-            # Auto-refresh every 500ms (adjustable)
-            refresh_interval = st.slider("Update Interval (ms)", 100, 2000, 500, 100, key="refresh_interval")
-            st_autorefresh(interval=refresh_interval, key="prediction_refresh")
-        
-        st.markdown("---")
-        
-        # Read from GLOBAL state and display
-        state = global_state.get_state()
-        
-        current_pred = state['prediction']
-        current_conf = state['confidence']
-        current_sentence = state['sentence']
-        frame_count = state['frame_count']
-        valid_preds = state['valid_predictions']
-        last_update = state['last_update_time']
-        
-        # Determine color based on confidence
-        if current_conf > 0.7:
-            color = "#00ff00"  # Green
-        elif current_conf > 0.3:
-            color = "#ffaa00"  # Orange
-        else:
-            color = "#ff4444"  # Red
-            
-        st.markdown(
-            f"### 🎯 <span style='color: {color}'>{current_pred}</span>",
-            unsafe_allow_html=True
-        )
-        
-        st.progress(
-            float(current_conf),
-            text=f"Confidence: {current_conf*100:.1f}%"
-        )
-        
-        if current_sentence:
-            st.success(
-                f"📝 **Sentence:** {' '.join(current_sentence)}"
-            )
-        else:
-            st.info("📝 No sentence yet...")
-        
-        # Show stats
-        time_since_update = time.time() - last_update
-        success_rate = (valid_preds / max(1, frame_count)) * 100
-        
-        st.metric(
-            label="Processing Stats",
-            value=f"{frame_count} frames",
-            delta=f"{success_rate:.1f}% valid predictions"
-        )
-        
-        st.caption(f"⏱️ Last update: {time_since_update:.1f}s ago")
+        # Permanent auto-refresh every 300ms for near real-time updates
+        st_autorefresh(interval=300, key="prediction_refresh")
         
         # Display final sequences (voting results)
-        final_sequences = state['final_sequences']
-        if final_sequences:
-            st.markdown("---")
-            st.markdown("### 📋 Voting Results")
-            
-            sequence_words = [seq['final_prediction'] for seq in final_sequences]
+        final_sequences = global_state.get_final_sequences()
+        unique_sequences = deduplicate_sequences()
+        
+        if unique_sequences:
+            sequence_words = [seq['final_prediction'] for seq in unique_sequences]
             sequences_text = " ".join(sequence_words)
-            st.markdown(f"## `{sequences_text}`")
-            
-            for i, seq in enumerate(final_sequences):
-                st.write(f"**{i+1}. {seq['final_prediction']}** - {seq['average_confidence']:.1%} confidence ({seq['vote_count']}/{seq['total_predictions']} votes)")
-        
-        # Action buttons
-        col_btn1, col_btn2 = st.columns(2)
-        
-        with col_btn1:
-            if st.button("🗑️ Clear All", use_container_width=True):
-                global_state.clear_all()
-                st.rerun()
-        
-        with col_btn2:
-            if st.button("🔄 Force Refresh", type="primary", use_container_width=True):
-                st.rerun()
-        
-        # Debug info
-        with st.expander("🔍 Debug Info"):
-            st.json({
-                "prediction": current_pred,
-                "confidence": f"{current_conf:.4f}",
-                "sentence": current_sentence,
-                "frames": frame_count,
-                "valid": valid_preds,
-                "final_sequences": len(final_sequences),
-                "hands_lost": state['hands_lost_counter']
-            })
+            st.markdown(f"# `{sequences_text}`")
+        else:
+            st.markdown("# *Waiting for clear signs...*")
 
 else:
     st.error("Model could not be loaded. The application cannot start.")
